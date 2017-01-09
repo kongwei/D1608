@@ -13,6 +13,9 @@ Flash_Data myip;
 void GPIO_Configuration(void);
 GPIO_InitTypeDef GPIO_InitStructure;
 
+extern const unsigned char default_preset[];
+const unsigned char * __image = default_preset;
+
 int main(void)
 {
 	pFunction Jump_To_Application;
@@ -119,7 +122,7 @@ void GPIO_Configuration(void)
 	/*ENC28J60的INT中断输入初始化*/
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;	        
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;   
-	GPIO_Init(GPIOC, &GPIO_InitStructure);		         
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
 /******************* (C) COPYRIGHT 2010 STMicroelectronics *****END OF FILE****/
