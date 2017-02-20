@@ -9,7 +9,7 @@
 
 extern unsigned long int iap_ip_address;
 extern Flash_Data myip;
-const unsigned char equip_id[10] = "csp850k-02";
+const unsigned char equip_id[10] = "d1616";
 
 uint32_t FlashDestination, flash_length; 
 uint32_t RamSource;
