@@ -25,33 +25,13 @@
 #define IP_ARP_UDP_TCP_H
 
 // you must call this function once before you use any of the other functions:
-extern void init_ip_arp_udp_tcp(unsigned char *mymac,unsigned char *myip,unsigned char wwwp);
-//
-extern unsigned char eth_type_is_arp_and_my_ip(unsigned char *buf,unsigned int len);
-extern unsigned char eth_type_is_ip_and_my_ip(unsigned char *buf,unsigned int len);
-extern void make_arp_answer_from_request(unsigned char *buf);
-extern void make_echo_reply_from_request(unsigned char *buf,unsigned int len);
-extern void make_udp_reply_from_request(unsigned char *buf,char *data,unsigned int datalen,unsigned int port);
-extern void make_udp_reply_from_buffer(unsigned char *buf,unsigned int datalen,unsigned  int port);
-extern void make_udp_reply_with_data(unsigned char *buf,unsigned int datalen,unsigned  int port);
-
-
-extern void make_tcp_synack_from_syn(unsigned char *buf,unsigned int src_port);
-extern void make_tcp_syn(unsigned char *buf,unsigned int src_port);
-extern void init_len_info(unsigned char *buf);
-extern unsigned int get_tcp_data_pointer(void);
-extern unsigned int get_tcp_data_len(void);
-extern unsigned int fill_tcp_data_p(unsigned char *buf,unsigned int pos, const unsigned char *progmem_s);
-extern unsigned int fill_tcp_data(unsigned char *buf,unsigned int pos, const char *s);
-extern void make_tcp_ack_from_any(unsigned char *buf,unsigned int src_port);
-void make_tcp_fin(unsigned char *buf,unsigned int src_port);
-void make_tcp_ack_fin_any(unsigned char *buf,unsigned int src_port);
-extern void make_tcp_ack_with_data(unsigned char *buf,unsigned int dlen,unsigned int src_port);
-extern void make_tcp_ack_with_data_2(unsigned char *buf,unsigned  int dlen,unsigned int src_port);
-void make_tcp_ack_with_data_NP(unsigned char *buf,unsigned  int dlen,unsigned int src_port);
-
-
-
+void init_ip_arp_udp_tcp(unsigned char *mymac,unsigned char *myip,unsigned char wwwp);
+unsigned char eth_type_is_arp_and_my_ip(unsigned char *buf,unsigned int len);
+unsigned char eth_type_is_ip_and_my_ip(unsigned char *buf,unsigned int len);
+void make_arp_answer_from_request(unsigned char *buf);
+void make_echo_reply_from_request(unsigned char *buf,unsigned int len);
+// void make_udp_reply_from_request(unsigned char *buf,char *data,unsigned int datalen,unsigned int port);
+void make_udp_reply_with_data(unsigned char *buf,unsigned int datalen,unsigned  int port);
 
 #endif /* IP_ARP_UDP_TCP_H */
 //@}
