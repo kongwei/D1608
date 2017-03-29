@@ -50,10 +50,10 @@ int main(void)
 	}
 
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;	    
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;	    
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;  
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
-	GPIO_SetBits(GPIOA, GPIO_Pin_11);
+	GPIO_SetBits(GPIOA, GPIO_Pin_8);
 
 	/*SPI1接口初始化*/
 	SPI1_Init();
