@@ -64,7 +64,6 @@ int main(void)
 	{
 		myip.data_32 = *(__IO uint32_t*)(iap_ip_address + 4);
 	}
-	FLASH_ErasePage(iap_ip_address);
 
 	if (myip.data_32 == 0)
 	{
