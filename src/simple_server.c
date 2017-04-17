@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include "enc28j60.h"
 #include "ip_arp_udp_tcp.h"
 #include "net.h"
@@ -59,12 +60,36 @@ void simple_server_start(void)
 	//UDP包，监听888端口的UDP包
 	if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0x03) && (buf[UDP_DST_PORT_L_P] == 0x78))
 	{
+#pragma pack(1)
+		typedef struct
+		{
+			char ip[4];
+			char flag1[10];
+			char name[26];
+			char flag3[64];
+			char type[16];
+			char ser[16];
+			char ver[36];
+			char mac[6];
+			char mask[4];
+			char gateway[4];
+			short port;
+		}T_slp_pack;
+#pragma pack()		
 		if (memcmp(buf+UDP_DATA_P, "rep", 3) == 0)
 		{
-			memcpy(buf+UDP_DATA_P, myip.data_8, 4);
-			memcpy(buf+UDP_DATA_P+4, equip_id, 10);
+			T_slp_pack * p_reply = (T_slp_pack*)(buf+UDP_DATA_P);
+			memcpy(p_reply->ip, myip.data_8, 4);
+			snprintf(p_reply->name, 25, "%s", equip_id);
+			memcpy(p_reply->type, equip_id, 16);
+			//memcpy(p_reply->mac, mymac, 6);
 
-			make_udp_reply_with_data(buf, 14, 888);
+			make_udp_reply_with_data(buf, sizeof(T_slp_pack), 888);
+
+			//memcpy(buf+UDP_DATA_P, myip.data_8, 4);
+			//memcpy(buf+UDP_DATA_P+4, equip_id, 10);
+
+			//make_udp_reply_with_data(buf, 14, 888);
 		}
 	}
 	else if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0xff) && (buf[UDP_DST_PORT_L_P] == 0xee))
