@@ -15,6 +15,8 @@ const unsigned char equip_id[10] = "d1616";
 uint32_t FlashDestination, flash_length; 
 uint32_t RamSource;
 
+extern unsigned char mymac[6];
+
 void simple_server_start(void)
 {
 	static unsigned char iap_state = 0;
@@ -64,7 +66,7 @@ void simple_server_start(void)
 		typedef struct
 		{
 			char ip[4];
-			char flag1[10];
+			char id[10];
 			char name[26];
 			char flag3[64];
 			char type[16];
@@ -81,7 +83,8 @@ void simple_server_start(void)
 			T_slp_pack * p_reply = (T_slp_pack*)(buf+UDP_DATA_P);
 			memcpy(p_reply->ip, myip.data_8, 4);
 			snprintf(p_reply->name, 25, "%s", equip_id);
-			memcpy(p_reply->type, equip_id, 16);
+			snprintf(p_reply->id, 10, "%02X%02X%02X", mymac[3], mymac[4], mymac[5]);
+
 			//memcpy(p_reply->mac, mymac, 6);
 
 			make_udp_reply_with_data(buf, sizeof(T_slp_pack), 888);

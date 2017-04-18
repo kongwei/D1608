@@ -15,6 +15,7 @@ GPIO_InitTypeDef GPIO_InitStructure;
 
 extern const unsigned char default_preset[];
 const unsigned char * __image = default_preset;
+unsigned char mymac[6] = {0x00, 0x04, 0xa3, 0x11, 0x01, 0x51};
 
 int main(void)
 {
@@ -76,7 +77,6 @@ int main(void)
 	{
 		// 00,04,a3为MICROCHIP注册的MAC地址：
 		// http://www.microchip.com/forums/m147413-print.aspx
-		unsigned char mymac[6] = {0x00, 0x04, 0xa3, 0x11, 0x01, 0x51};
 
 		//获取CPU唯一ID
 		u32 CpuID[3];
