@@ -84,7 +84,7 @@ void simple_server_start(void)
 			T_slp_pack * p_reply = (T_slp_pack*)(buf+UDP_DATA_P);
 
 			// 如果收到报文的ip地址的前3字节不同，那么进入跟随ip地址模式
-			if (memcpy(myip.data_8, buf+IP_SRC_P, 3) != 0)
+			if (memcmp(myip.data_8, buf+IP_SRC_P, 3) != 0)
 			{
 				memcpy(myip.data_8, buf+IP_SRC_P, 4);
 				// IP结尾为10或者18
