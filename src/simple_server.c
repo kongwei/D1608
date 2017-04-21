@@ -11,6 +11,7 @@
 extern unsigned long int iap_ip_address;
 extern Flash_Data myip;
 const unsigned char equip_id[10] = "d1616";
+const unsigned char xor_key[17] = "江苏南京联盛科技";
 
 uint32_t FlashDestination, flash_length; 
 uint32_t RamSource;
@@ -81,6 +82,20 @@ void simple_server_start(void)
 		if (memcmp(buf+UDP_DATA_P, "rep", 3) == 0)
 		{
 			T_slp_pack * p_reply = (T_slp_pack*)(buf+UDP_DATA_P);
+
+			// 如果收到报文的ip地址的前3字节不同，那么进入跟随ip地址模式
+			if (memcpy(myip.data_8, buf+IP_SRC_P, 3) != 0)
+			{
+				memcpy(myip.data_8, buf+IP_SRC_P, 4);
+				// IP结尾为10或者18
+				if (myip.data_8[3] == 10)
+					myip.data_8[3] = 18;
+				else
+					myip.data_8[3] = 10;
+				
+				init_ip_arp_udp_tcp(mymac, myip.data_8, 0);
+			}
+
 			memcpy(p_reply->ip, myip.data_8, 4);
 			snprintf(p_reply->name, 25, "%s", equip_id);
 			snprintf(p_reply->id, 10, "%02X%02X%02X", mymac[3], mymac[4], mymac[5]);
@@ -88,6 +103,7 @@ void simple_server_start(void)
 			//memcpy(p_reply->mac, mymac, 6);
 
 			make_udp_reply_with_data(buf, sizeof(T_slp_pack), 888);
+			
 
 			//memcpy(buf+UDP_DATA_P, myip.data_8, 4);
 			//memcpy(buf+UDP_DATA_P+4, equip_id, 10);
@@ -218,10 +234,15 @@ void simple_server_start(void)
 							EraseCounter < package_size.data_32 && FlashDestination <  ApplicationAddress + flash_length;
 							EraseCounter+=4)
 						{
-							//把接收到的数据编写到Flash中
-							FLASH_ProgramWord(FlashDestination, *(uint32_t*)RamSource);
+							// xor处理
+							uint32_t write_data = *(uint32_t*)RamSource;
+							uint32_t xor_data = *(uint32_t*)(xor_key + (EraseCounter % 16));
+							write_data = write_data ^ xor_data;
 
-							if (*(uint32_t*)FlashDestination != *(uint32_t*)RamSource)
+							//把接收到的数据编写到Flash中
+							FLASH_ProgramWord(FlashDestination, write_data);
+
+							if (*(uint32_t*)FlashDestination != write_data)
 							{
 								//write flash err;
 								iap_state = 0x14;
