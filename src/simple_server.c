@@ -99,6 +99,7 @@ void simple_server_start(void)
 			memcpy(p_reply->ip, myip.data_8, 4);
 			snprintf(p_reply->name, 25, "%s", equip_id);
 			snprintf(p_reply->id, 10, "%02X%02X%02X", mymac[3], mymac[4], mymac[5]);
+			snprintf(p_reply->ver, 35, "%s %s", __DATE__, __TIME__);
 
 			//memcpy(p_reply->mac, mymac, 6);
 
