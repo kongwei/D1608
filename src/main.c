@@ -13,8 +13,6 @@ Flash_Data myip;
 void GPIO_Configuration(void);
 GPIO_InitTypeDef GPIO_InitStructure;
 
-extern const unsigned char default_preset[];
-const unsigned char * __image = default_preset;
 unsigned char mymac[6] = {0x00, 0x04, 0xa3, 0x11, 0x01, 0x51};
 
 int main(void)

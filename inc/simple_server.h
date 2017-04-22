@@ -10,7 +10,7 @@ typedef union
 } Flash_Data;
 
 //#define DefaultStartAddress	  0x8000000
-#define ApplicationAddress    0x8004000
+#define ApplicationAddress    0x8002000
 
 #if defined (STM32F10X_MD) || defined (STM32F10X_MD_VL)
  #define PAGE_SIZE                         (0x400)    /* 1 Kbyte */
