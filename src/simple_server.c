@@ -17,6 +17,33 @@ uint32_t FlashDestination, flash_length;
 uint32_t RamSource;
 
 extern unsigned char mymac[6];
+#pragma pack(1)
+		typedef struct
+		{
+			char ip[4];
+			char id[10];
+			char name[26];
+			char flag3[64];
+			char type[16];
+			char ser[16];
+			char ver[36];
+			char mac[6];
+			char mask[4];
+			char gateway[4];
+			short port;
+		}T_slp_pack;
+
+#define active_code_length 20
+#define SN_START_PAGE (0x0803E800)
+    typedef struct
+    {
+        char sn[12];
+        char type[20];
+        char name1[24];
+        char name2[24];
+        char hardware_name[16];
+    }T_sn_pack;
+#pragma pack()
 
 void simple_server_start(void)
 {
@@ -63,22 +90,6 @@ void simple_server_start(void)
 	//UDP包，监听888端口的UDP包
 	if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0x03) && (buf[UDP_DST_PORT_L_P] == 0x78))
 	{
-#pragma pack(1)
-		typedef struct
-		{
-			char ip[4];
-			char id[10];
-			char name[26];
-			char flag3[64];
-			char type[16];
-			char ser[16];
-			char ver[36];
-			char mac[6];
-			char mask[4];
-			char gateway[4];
-			short port;
-		}T_slp_pack;
-#pragma pack()		
 		if (memcmp(buf+UDP_DATA_P, "rep", 3) == 0)
 		{
 			T_slp_pack * p_reply = (T_slp_pack*)(buf+UDP_DATA_P);
@@ -183,89 +194,122 @@ void simple_server_start(void)
 			payloadlen = payloadlen<<8;
 			payloadlen = payloadlen + buf[UDP_LEN_L_P] - UDP_HEADER_LEN;
 
-			make_udp_reply_with_data(buf, payloadlen, 65518);
+			//make_udp_reply_with_data(buf, payloadlen, 65518);
 
-			iap_state &= 0xf0;
-
-			if (iap_state == 0x00)
 			{
-				if (memcmp(buf+UDP_DATA_P, "iap_start", 9) == 0)
+				iap_state &= 0xf0;
+
+				if (iap_state == 0x00)
 				{
-					memcpy(package_size.data_8, buf+UDP_DATA_P+9, 4);
-					flash_length = package_size.data_32;
-					if (package_size.data_32 > 128*1024)//51200
+					if (memcmp(buf+UDP_DATA_P, "iap_start", 9) == 0)
 					{
-						//too big
-						iap_state = 0x01;
+						make_udp_reply_with_data(buf, payloadlen, 65518);
+						
+						memcpy(package_size.data_8, buf+UDP_DATA_P+9, 4);
+						flash_length = package_size.data_32;
+						if (package_size.data_32 > 128*1024)//51200
+						{
+							//too big
+							iap_state = 0x01;
+						}
+						else
+						{
+							unsigned int NbrOfPage;
+							FLASH_Status FLASHStatus = FLASH_COMPLETE;
+
+							//计算需要擦除Flash的页
+							NbrOfPage = (package_size.data_32 + PAGE_SIZE - 1) / PAGE_SIZE;
+
+							FlashDestination = ApplicationAddress;
+
+							//擦除Flash
+							for (EraseCounter = 0;
+								(EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE);
+								EraseCounter++)
+							{
+								FLASHStatus = FLASH_ErasePage(ApplicationAddress + (PAGE_SIZE * EraseCounter));
+							}
+
+							//flash erase ok
+							iap_state = 0x12;
+						}
+					}
+					else if (memcmp(buf+UDP_DATA_P, "iap", 3) != 0)
+					{
+						iap_state = 0;
+						memcpy(buf+UDP_DATA_P, "err", 3);
+						make_udp_reply_with_data(buf,3,65518);
 					}
 					else
 					{
-						unsigned int NbrOfPage;
-						FLASH_Status FLASHStatus = FLASH_COMPLETE;
-
-						//计算需要擦除Flash的页
-						NbrOfPage = (package_size.data_32 + PAGE_SIZE - 1) / PAGE_SIZE;
-
-						FlashDestination = ApplicationAddress;
-
-						//擦除Flash
-						for (EraseCounter = 0;
-							(EraseCounter < NbrOfPage) && (FLASHStatus == FLASH_COMPLETE);
-							EraseCounter++)
+						// 校验硬件
+						T_sn_pack * p_sn_pack = (T_sn_pack*)(SN_START_PAGE+active_code_length);
+						char hardware_verify[16];
+						
+						memcpy(hardware_verify, p_sn_pack->hardware_name, sizeof(hardware_verify));
+						// 是否能匹配硬件名称
+						if ((memcmp("|XXXX|", hardware_verify, 6) != 0) 
+							&& (strstr((char*)buf+UDP_DATA_P, hardware_verify) == NULL)
+							&& (memcmp("\xFF\xFF\xFF\xFF\xFF\xFF", hardware_verify, 6) != 0) )
 						{
-							FLASHStatus = FLASH_ErasePage(ApplicationAddress + (PAGE_SIZE * EraseCounter));
+							iap_state = 0;
+							memcpy(buf+UDP_DATA_P, "err", 3);
+							make_udp_reply_with_data(buf,3,65518);
 						}
-
-						//flash erase ok
-						iap_state = 0x12;
+						else
+						{
+							make_udp_reply_with_data(buf, payloadlen, 65518);
+						}
 					}
 				}
-			}
-			else if (iap_state == 0x10)
-			{
-				if (memcmp(buf+UDP_DATA_P, "iap_data:", 9) == 0)
+				else if (iap_state == 0x10)
 				{
-					memcpy(package_size.data_8, buf+UDP_DATA_P+9, 4);
-					//write flash ok;
-					iap_state = 0x13;
-					RamSource = (uint32_t)(buf + UDP_DATA_P + 13);
-
+					make_udp_reply_with_data(buf, payloadlen, 65518);
+					if (memcmp(buf+UDP_DATA_P, "iap_data:", 9) == 0)
 					{
-						for (EraseCounter = 0; 
-							EraseCounter < package_size.data_32 && FlashDestination <  ApplicationAddress + flash_length;
-							EraseCounter+=4)
+						memcpy(package_size.data_8, buf+UDP_DATA_P+9, 4);
+						//write flash ok;
+						iap_state = 0x13;
+						RamSource = (uint32_t)(buf + UDP_DATA_P + 13);
+
 						{
-							// xor处理
-							uint32_t write_data = *(uint32_t*)RamSource;
-							uint32_t xor_data = *(uint32_t*)(xor_key + (EraseCounter % 16));
-							write_data = write_data ^ xor_data;
-
-							//把接收到的数据编写到Flash中
-							FLASH_ProgramWord(FlashDestination, write_data);
-
-							if (*(uint32_t*)FlashDestination != write_data)
+							for (EraseCounter = 0; 
+								EraseCounter < package_size.data_32 && FlashDestination <  ApplicationAddress + flash_length;
+								EraseCounter+=4)
 							{
-								//write flash err;
-								iap_state = 0x14;
+								// xor处理
+								uint32_t write_data = *(uint32_t*)RamSource;
+								uint32_t xor_data = *(uint32_t*)(xor_key + (EraseCounter % 16));
+								write_data = write_data ^ xor_data;
+
+								//把接收到的数据编写到Flash中
+								FLASH_ProgramWord(FlashDestination, write_data);
+
+								if (*(uint32_t*)FlashDestination != write_data)
+								{
+									//write flash err;
+									iap_state = 0x14;
+								}
+								FlashDestination += 4;
+								RamSource += 4;
 							}
-							FlashDestination += 4;
-							RamSource += 4;
 						}
 					}
-				}
-				else if (memcmp(buf+UDP_DATA_P, "iap_end", 7) == 0)
-				{
-					iap_state = 0x26;
+					else if (memcmp(buf+UDP_DATA_P, "iap_end", 7) == 0)
+					{
+						iap_state = 0x26;
+					}
+					else
+					{
+						//write flash ok;
+						iap_state = 0x05;
+					}
 				}
 				else
 				{
-					//write flash ok;
-					iap_state = 0x05;
+					make_udp_reply_with_data(buf, payloadlen, 65518);
+					iap_state = 0x00;
 				}
-			}
-			else
-			{
-				iap_state = 0x00;
 			}
 		}
 	}
