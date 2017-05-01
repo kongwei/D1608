@@ -87,12 +87,13 @@ void simple_server_start(void)
 		return;
 	}
 
-	//UDP包，监听888端口的UDP包
-	if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0x03) && (buf[UDP_DST_PORT_L_P] == 0x78))
+	//UDP包，监听666端口的UDP包
+	if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0x02) && (buf[UDP_DST_PORT_L_P] == 0x9A))
 	{
 		if (memcmp(buf+UDP_DATA_P, "rep", 3) == 0)
 		{
 			T_slp_pack * p_reply = (T_slp_pack*)(buf+UDP_DATA_P);
+			memset(p_reply, 0, sizeof(T_slp_pack));
 
 			// 如果收到报文的ip地址的前3字节不同，那么进入跟随ip地址模式
 			if (memcmp(myip.data_8, buf+IP_SRC_P, 3) != 0)
