@@ -10,7 +10,7 @@
 
 extern unsigned long int iap_ip_address;
 extern Flash_Data myip;
-const unsigned char equip_id[10] = "d1616";
+const unsigned char equip_id[10] = "SMCXXXX";
 const unsigned char xor_key[17] = "江苏南京联盛科技";
 
 uint32_t FlashDestination, flash_length; 
