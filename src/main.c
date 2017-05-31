@@ -5,7 +5,10 @@
 #include "stm32f10x_tim.h"
 #include "simple_server.h"
 #include "ip_arp_udp_tcp.h"
-	   
+#include <absacc.h>
+
+const char MyText[] __at (0x08001F00) = __DATE__" "__TIME__; 
+
 //unsigned char myip[4];// = {192, 168, 1, 15};
 unsigned long int iap_ip_address = 0x0803E000;
 Flash_Data myip;
