@@ -37,7 +37,7 @@ extern unsigned char mymac[6];
 #define SN_START_PAGE (0x0803E800)
     typedef struct
     {
-        char sn[12];
+        char sn[20];
         char type[20];
         char name1[24];
         char name2[24];
