@@ -6,6 +6,11 @@
 #include "simple_server.h"
 #include "ip_arp_udp_tcp.h"
 #include <absacc.h>
+#include <string.h>
+#include <stdio.h>
+
+extern void GetCheckCode(int address, int size, unsigned char decrypt[16]);
+extern char start_key[29];
 
 const char MyText[] __at (0x08001F00) = __DATE__" "__TIME__; 
 
@@ -61,6 +66,23 @@ int main(void)
 	SPI1_Init();
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE); 
 
+	// 校验start程序
+	{
+		unsigned char decrypt[16] = {0};
+		char decrypt_string[40];
+		GetCheckCode(0x8000000, 0x2000, decrypt);
+		//decrypt[5] = start_key[5] = '\x55';
+		//decrypt[9] = start_key[9] = '\xaa';
+		sprintf(decrypt_string, "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X", 
+			decrypt[0],decrypt[1],decrypt[2],decrypt[3],decrypt[4], decrypt[6],decrypt[7],
+			decrypt[8], decrypt[10],decrypt[11],decrypt[12],decrypt[13],decrypt[14],decrypt[15]);
+		if (strcmp(decrypt_string, start_key) != 0)
+		{
+			// fault
+			while(1);
+		}
+	}
+	
 	FLASH_Unlock();
 	if (*(__IO uint32_t*)iap_ip_address == 0x55aa4774 )
 	{
@@ -133,10 +155,8 @@ void GPIO_Configuration(void)
 flash使用情况
 
 +-------------+     0x08000000
-| IAP         |6k
-+-------------+     0x08001800
-| SYSTEM DATA |10k
-+-------------+     0x08004000
+| IAP         |4k
++-------------+     0x08002000
 | APP         |
 |             |
 |             |
@@ -180,14 +200,14 @@ flash使用情况
 |             |
 |             |
 |             |
-|             |     0x08030000
++-------------+     0x08030000
 |             |
 |             |
 |             |
 |             |
 |             |
-|             |
-|             |
++-------------+     0x08038800
+| IAP         |
 |             |
 +-------------+     0x08039000
 | LOG         |
