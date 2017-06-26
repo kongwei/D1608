@@ -90,7 +90,7 @@ void simple_server_start(void)
 	//UDP包，监听666端口的UDP包
 	if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0x02) && (buf[UDP_DST_PORT_L_P] == 0x9A))
 	{
-		if (memcmp(buf+UDP_DATA_P, "rep", 3) == 0)
+		if (memcmp(buf+UDP_DATA_P, "ver", 3) == 0)
 		{
 			T_slp_pack * p_reply = (T_slp_pack*)(buf+UDP_DATA_P);
 			memset(p_reply, 0, sizeof(T_slp_pack));
@@ -281,7 +281,7 @@ void simple_server_start(void)
 								// xor处理
 								uint32_t write_data = *(uint32_t*)RamSource;
 								uint32_t xor_data = *(uint32_t*)(xor_key + (EraseCounter % 16));
-								write_data = write_data ^ xor_data;
+								write_data = write_data ^ xor_data ^ 0x55aa4774;
 
 								//把接收到的数据编写到Flash中
 								FLASH_ProgramWord(FlashDestination, write_data);
