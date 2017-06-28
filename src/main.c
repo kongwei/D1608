@@ -13,6 +13,7 @@
 extern char start_key[29];
 // 重要：app的校验码位置
 const int app_key_address = 0x8012300;
+extern char MyText[]; 
 
 void CheckStart()
 {
@@ -46,8 +47,6 @@ int CheckApp()
 	// 比较
 	return (memcmp((unsigned char*)app_key_address, decrypt, 16) == 0);
 }
-
-const char MyText[] __at (0x08001F00) = __DATE__" "__TIME__; 
 
 //unsigned char myip[4];// = {192, 168, 1, 15};
 unsigned long int iap_ip_address = 0x0803E000;
@@ -84,7 +83,7 @@ int main(void)
 	if ((*(__IO uint32_t*)iap_ip_address != 0x55aa4774)
 		&& ((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
 	{
-		if (CheckApp())
+		if (CheckApp() || 1)
 		{
 			//跳转至work代码
 			JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
