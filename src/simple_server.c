@@ -219,7 +219,9 @@ void simple_server_start(void)
 							FLASH_Status FLASHStatus = FLASH_COMPLETE;
 
 							//计算需要擦除Flash的页
-							NbrOfPage = (package_size.data_32 + PAGE_SIZE - 1) / PAGE_SIZE;
+							//NbrOfPage = (package_size.data_32 + PAGE_SIZE - 1) / PAGE_SIZE;
+							// 固定擦除100k
+							NbrOfPage = 62;
 
 							FlashDestination = ApplicationAddress;
 

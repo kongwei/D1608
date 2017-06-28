@@ -13,7 +13,7 @@ typedef union
 #define ApplicationAddress    0x8002000
 
 #if defined (STM32F10X_MD) || defined (STM32F10X_MD_VL)
- #define PAGE_SIZE                         (0x400)    /* 1 Kbyte */
+ #define PAGE_SIZE                         (0x800)    /* 2 Kbyte */
  #define FLASH_SIZE                        (0x20000)  /* 128 KBytes */
 #elif defined STM32F10X_CL
  #define PAGE_SIZE                         (0x800)    /* 2 Kbytes */

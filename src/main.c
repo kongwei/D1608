@@ -5,12 +5,47 @@
 #include "stm32f10x_tim.h"
 #include "simple_server.h"
 #include "ip_arp_udp_tcp.h"
+#include <md5.h>
 #include <absacc.h>
 #include <string.h>
 #include <stdio.h>
 
-extern void GetCheckCode(int address, int size, unsigned char decrypt[16]);
 extern char start_key[29];
+// 重要：app的校验码位置
+const int app_key_address = 0x8012300;
+
+void CheckStart()
+{
+	unsigned char decrypt[16] = {0};
+	char decrypt_string[40];
+	MD5_CTX md5;
+
+	MD5Init(&md5);
+	MD5Update(&md5, (unsigned char*)0x8000000, 0x2000);
+	MD5Final(&md5,decrypt);
+
+	sprintf(decrypt_string, "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X", 
+		decrypt[0],decrypt[1],decrypt[2],decrypt[3],decrypt[4], decrypt[6],decrypt[7],
+		decrypt[8], decrypt[10],decrypt[11],decrypt[12],decrypt[13],decrypt[14],decrypt[15]);
+	if (strcmp(decrypt_string, start_key) != 0)
+	{
+		// fault
+		while(1);
+	}
+}
+// 校验app程序
+int CheckApp()
+{
+	unsigned char decrypt[16];
+	MD5_CTX md5;
+	MD5Init(&md5);
+	MD5Update(&md5, (unsigned char*)0x8002000, app_key_address-0x8002000);
+	MD5Update(&md5, (unsigned char*)app_key_address+16, 0x8002000+0x1E000-(app_key_address+16));
+	MD5Final(&md5,decrypt);
+
+	// 比较
+	return (memcmp((unsigned char*)app_key_address, decrypt, 16) == 0);
+}
 
 const char MyText[] __at (0x08001F00) = __DATE__" "__TIME__; 
 
@@ -28,6 +63,8 @@ int main(void)
 	pFunction Jump_To_Application;
 	uint32_t JumpAddress;
 	uint32_t tmpreg;
+
+	CheckStart();
 
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0000);
 	SystemInit();
@@ -47,13 +84,16 @@ int main(void)
 	if ((*(__IO uint32_t*)iap_ip_address != 0x55aa4774)
 		&& ((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
 	{
-		//跳转至work代码
-		JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
-		Jump_To_Application = (pFunction) JumpAddress;
+		if (CheckApp())
+		{
+			//跳转至work代码
+			JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
+			Jump_To_Application = (pFunction) JumpAddress;
 
-		//初始化用户程序的堆栈指针
-		__set_MSP(*(__IO uint32_t*) ApplicationAddress);
-		Jump_To_Application();
+			//初始化用户程序的堆栈指针
+			__set_MSP(*(__IO uint32_t*) ApplicationAddress);
+			Jump_To_Application();
+		}
 	}
 
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
@@ -66,23 +106,6 @@ int main(void)
 	SPI1_Init();
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE); 
 
-	// 校验start程序
-	{
-		unsigned char decrypt[16] = {0};
-		char decrypt_string[40];
-		GetCheckCode(0x8000000, 0x2000, decrypt);
-		//decrypt[5] = start_key[5] = '\x55';
-		//decrypt[9] = start_key[9] = '\xaa';
-		sprintf(decrypt_string, "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X", 
-			decrypt[0],decrypt[1],decrypt[2],decrypt[3],decrypt[4], decrypt[6],decrypt[7],
-			decrypt[8], decrypt[10],decrypt[11],decrypt[12],decrypt[13],decrypt[14],decrypt[15]);
-		if (strcmp(decrypt_string, start_key) != 0)
-		{
-			// fault
-			while(1);
-		}
-	}
-	
 	FLASH_Unlock();
 	if (*(__IO uint32_t*)iap_ip_address == 0x55aa4774 )
 	{
