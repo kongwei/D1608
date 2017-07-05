@@ -10,9 +10,11 @@
 #include <string.h>
 #include <stdio.h>
 
-extern char start_key[29];
+const char start_key[30] __at (0x8002800) = "308746F2642739CC4456D071807C"; 
+
 // 重要：app的校验码位置
 const int app_key_address = 0x8012300;
+
 extern char MyText[]; 
 
 void CheckStart()
@@ -40,8 +42,8 @@ int CheckApp()
 	unsigned char decrypt[16];
 	MD5_CTX md5;
 	MD5Init(&md5);
-	MD5Update(&md5, (unsigned char*)0x8002000, app_key_address-0x8002000);
-	MD5Update(&md5, (unsigned char*)app_key_address+16, 0x8002000+0x1E000-(app_key_address+16));
+	MD5Update(&md5, (unsigned char*)ApplicationAddress, app_key_address-ApplicationAddress);
+	MD5Update(&md5, (unsigned char*)app_key_address+16, ApplicationAddress+0x1E000-(app_key_address+16));
 	MD5Final(&md5,decrypt);
 
 	// 比较
@@ -56,6 +58,8 @@ void GPIO_Configuration(void);
 GPIO_InitTypeDef GPIO_InitStructure;
 
 unsigned char mymac[6] = {0x00, 0x04, 0xa3, 0x11, 0x01, 0x51};
+
+u32 CpuID[3];
 
 int main(void)
 {
@@ -83,7 +87,7 @@ int main(void)
 	if ((*(__IO uint32_t*)iap_ip_address != 0x55aa4774)
 		&& ((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
 	{
-		if (CheckApp() || 1)
+		if (CheckApp())
 		{
 			//跳转至work代码
 			JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
@@ -124,7 +128,6 @@ int main(void)
 		// http://www.microchip.com/forums/m147413-print.aspx
 
 		//获取CPU唯一ID
-		u32 CpuID[3];
 		CpuID[0]=*(vu32*)(0x1ffff7e8);
 		CpuID[1]=*(vu32*)(0x1ffff7ec);
 		CpuID[2]=*(vu32*)(0x1ffff7f0);
@@ -178,7 +181,7 @@ flash使用情况
 
 +-------------+     0x08000000
 | IAP         |4k
-+-------------+     0x08002000
++-------------+     0x08003000
 | APP         |
 |             |
 |             |
@@ -190,7 +193,6 @@ flash使用情况
 |             |
 |             |
 |             |
-|             |     0x08010000
 |             |
 |             |
 |             |
@@ -206,7 +208,8 @@ flash使用情况
 |             |
 |             |
 |             |
-+-------------+     0x08020000
+|             |
++-------------+     0x08021000
 | PRESET      |
 |             |
 |             |
@@ -237,6 +240,11 @@ flash使用情况
 |             |
 |             |
 +-------------+     0x0803E000
+|             |
+|             |
++-------------+     0x0803E800
+| 工厂配置    |
+|             |
 |             |
 +-------------+     0x08040000
 */

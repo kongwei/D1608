@@ -9,8 +9,7 @@ typedef union
 	unsigned char data_8[4];
 } Flash_Data;
 
-//#define DefaultStartAddress	  0x8000000
-#define ApplicationAddress    0x8002000
+#define ApplicationAddress    0x8003000
 
 #if defined (STM32F10X_MD) || defined (STM32F10X_MD_VL)
  #define PAGE_SIZE                         (0x800)    /* 2 Kbyte */

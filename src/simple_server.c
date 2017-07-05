@@ -31,6 +31,7 @@ extern unsigned char mymac[6];
 			char mask[4];
 			char gateway[4];
 			short port;
+			unsigned int cpu_id[3];		//
 		}T_slp_pack;
 
 #define active_code_length 20
@@ -39,11 +40,15 @@ extern unsigned char mymac[6];
     {
         char sn[20];
         char type[20];
+        char default_device_name[20];
         char name1[24];
         char name2[24];
         char hardware_name[16];
+        char active_code[20];
     }T_sn_pack;
 #pragma pack()
+
+extern u32 CpuID[3];
 
 void simple_server_start(void)
 {
@@ -108,6 +113,10 @@ void simple_server_start(void)
 				init_ip_arp_udp_tcp(mymac, myip.data_8, 0);
 			}
 
+			p_reply->cpu_id[0] = *(vu32*)(0x1ffff7e8);
+			p_reply->cpu_id[1] = *(vu32*)(0x1ffff7ec);
+			p_reply->cpu_id[2] = *(vu32*)(0x1ffff7f0);
+
 			memcpy(p_reply->ip, myip.data_8, 4);
 			snprintf(p_reply->name, 25, "%s", equip_id);
 			snprintf(p_reply->id, 10, "%02X%02X%02X", mymac[3], mymac[4], mymac[5]);
@@ -124,8 +133,75 @@ void simple_server_start(void)
 			//make_udp_reply_with_data(buf, 14, 888);
 		}
 	}
+	// 8754
+	else if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0x22) && (buf[UDP_DST_PORT_L_P] == 0x32))
+	{
+		int length = buf[UDP_LEN_H_P] << 8 | buf[UDP_LEN_L_P];
+		if (length < 256+12)
+		{
+			return;
+		}
+		
+		if (buf[UDP_DATA_P] == ' ' && buf[UDP_DATA_P+1] == ' ')
+		{
+			int i;
+			for (i=0;i<256;i++)
+			{
+				char * p_sign = (char*)0x0803E400+i;
+				if (p_sign[0] != 0xFF)
+				{
+					break;
+				}
+			}
+			if (i == 256)
+			{
+				// 返回校验码
+				memcpy(buf+UDP_DATA_P, (char*)0x0803E400, 256);
+				memcpy(buf+UDP_DATA_P+256, CpuID, 12);
+				make_udp_reply_with_data(buf, 256+12, 8754);
+			}
+		}
+		else if (memcmp(CpuID, buf+UDP_DATA_P+256, 12) == 0)
+		{
+			// 写rsa加密后的校验码
+			int i;
+			FLASH_ErasePage(0x0803E400);
+
+			for (i = 0; i < 256; i += 4)
+			{
+				// xor处理
+				uint32_t write_data = *(uint32_t*)(buf+UDP_DATA_P+i);
+
+				//把接收到的数据编写到Flash中
+				FLASH_ProgramWord(0x0803E400+i, write_data);
+			}
+		}
+	}
+	else if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0x03) && (buf[UDP_DST_PORT_L_P] == 0x79))
+	{
+		int i;
+		//T_sn_pack * p_sn = (T_sn_pack*)(buf+UDP_DATA_P);
+		
+		FLASH_Unlock();
+		FLASH_ErasePage(SN_START_PAGE);
+
+		for (i = 0; i<sizeof(T_sn_pack); i+=4)
+		{
+			uint32_t data = *(uint32_t*)(buf+UDP_DATA_P+i);
+			FLASH_ProgramWord(SN_START_PAGE + i + active_code_length, data);
+		}
+	}
 	else if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0xff) && (buf[UDP_DST_PORT_L_P] == 0xee))
 	{
+		// 是否激活
+		T_sn_pack * p_sn_pack = (T_sn_pack*)(SN_START_PAGE+active_code_length);
+		if (p_sn_pack->active_code[0]==0xFF && p_sn_pack->active_code[1]==0xFF)
+		{
+			memcpy(buf+UDP_DATA_P, "err", 3);
+			make_udp_reply_with_data(buf, 3, 65518);
+			return;
+		}
+		
 		if (memcmp(buf+UDP_DATA_P, "opt", 3) == 0)
 		{
 			if (iap_state == 0x01)
