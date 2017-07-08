@@ -49,7 +49,6 @@ extern unsigned char mymac[6];
 #pragma pack()
 
 extern u32 CpuID[3];
-
 void simple_server_start(void)
 {
 	static unsigned char iap_state = 0;
@@ -147,7 +146,7 @@ void simple_server_start(void)
 			int i;
 			for (i=0;i<256;i++)
 			{
-				char * p_sign = (char*)0x0803E400+i;
+				char * p_sign = (char*)SN_START_PAGE+1024+i;
 				if (p_sign[0] != 0xFF)
 				{
 					break;
@@ -156,7 +155,7 @@ void simple_server_start(void)
 			if (i == 256)
 			{
 				// 返回校验码
-				memcpy(buf+UDP_DATA_P, (char*)0x0803E400, 256);
+				memcpy(buf+UDP_DATA_P, (char*)SN_START_PAGE+1024, 256);
 				memcpy(buf+UDP_DATA_P+256, CpuID, 12);
 				make_udp_reply_with_data(buf, 256+12, 8754);
 			}
@@ -165,15 +164,23 @@ void simple_server_start(void)
 		{
 			// 写rsa加密后的校验码
 			int i;
-			FLASH_ErasePage(0x0803E400);
+			
+			char sn_pack_buf[sizeof(T_sn_pack)];
+			memcpy(sn_pack_buf, (char*)SN_START_PAGE + active_code_length, sizeof(sn_pack_buf));
+			
+			FLASH_Unlock();
+			FLASH_ErasePage(SN_START_PAGE+1024);
 
 			for (i = 0; i < 256; i += 4)
 			{
-				// xor处理
 				uint32_t write_data = *(uint32_t*)(buf+UDP_DATA_P+i);
+				FLASH_ProgramWord(SN_START_PAGE+1024+i, write_data);
+			}
 
-				//把接收到的数据编写到Flash中
-				FLASH_ProgramWord(0x0803E400+i, write_data);
+			for (i = 0; i<sizeof(T_sn_pack); i+=4)
+			{
+				uint32_t data = *(uint32_t*)(sn_pack_buf+i);
+				FLASH_ProgramWord(SN_START_PAGE + i + active_code_length, data);
 			}
 		}
 	}
@@ -181,6 +188,8 @@ void simple_server_start(void)
 	{
 		int i;
 		//T_sn_pack * p_sn = (T_sn_pack*)(buf+UDP_DATA_P);
+		char rsa_buf[256];
+		memcpy(rsa_buf, (char*)SN_START_PAGE + 1024, sizeof(rsa_buf));
 		
 		FLASH_Unlock();
 		FLASH_ErasePage(SN_START_PAGE);
@@ -189,6 +198,11 @@ void simple_server_start(void)
 		{
 			uint32_t data = *(uint32_t*)(buf+UDP_DATA_P+i);
 			FLASH_ProgramWord(SN_START_PAGE + i + active_code_length, data);
+		}
+		for (i = 0; i < 256; i += 4)
+		{
+			uint32_t write_data = *(uint32_t*)(rsa_buf+i);
+			FLASH_ProgramWord(SN_START_PAGE+1024+i, write_data);
 		}
 	}
 	else if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0xff) && (buf[UDP_DST_PORT_L_P] == 0xee))
