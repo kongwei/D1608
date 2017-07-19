@@ -18,24 +18,6 @@ uint32_t RamSource;
 
 extern unsigned char mymac[6];
 #pragma pack(1)
-		typedef struct
-		{
-			char ip[4];
-			char id[10];
-			char name[26];
-			char flag3[64];
-			char type[16];
-			char ser[16];
-			char ver[36];
-			char mac[6];
-			char mask[4];
-			char gateway[4];
-			short port;
-			unsigned int cpu_id[3];		//
-		}T_slp_pack;
-
-#define active_code_length 20
-#define SN_START_PAGE (0x0803E800)
     typedef struct
     {
         char sn[20];
@@ -46,6 +28,25 @@ extern unsigned char mymac[6];
         char hardware_name[16];
         char active_code[20];
     }T_sn_pack;
+	typedef struct
+	{
+		char ip[4];
+		char id[10];
+		char name[26];
+		char flag3[64];
+		char type[16];
+		char ser[16];
+		char ver[36];
+		char mac[6];
+		char mask[4];
+		char gateway[4];
+		short port;
+		unsigned int cpu_id[3];		//
+		T_sn_pack sn_info;
+	}T_slp_pack;
+
+#define active_code_length 20
+#define SN_START_PAGE (0x0803E800)
 #pragma pack()
 
 extern u32 CpuID[3];
@@ -122,6 +123,7 @@ void simple_server_start(void)
 			snprintf(p_reply->ver, 35, "%s %s", __DATE__, __TIME__);
 
 			//memcpy(p_reply->mac, mymac, 6);
+			memcpy(&p_reply->sn_info, (char*)SN_START_PAGE + active_code_length, sizeof(p_reply->sn_info));
 
 			make_udp_reply_with_data(buf, sizeof(T_slp_pack), 888);
 			
