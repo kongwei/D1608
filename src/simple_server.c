@@ -14,7 +14,6 @@ const unsigned char equip_id[10] = "SMCXXXX";
 const unsigned char xor_key[17] = "江苏南京联盛科技";
 
 uint32_t FlashDestination, flash_length; 
-uint32_t RamSource;
 
 extern unsigned char mymac[6];
 #pragma pack(1)
@@ -48,6 +47,9 @@ extern unsigned char mymac[6];
 #define active_code_length 20
 #define SN_START_PAGE (0x0803E800)
 #pragma pack()
+
+static char last_1k_cache[2048]; // 前1024缓存，后1024拼接数据
+static int last_1k_cache_size = 0;
 
 extern u32 CpuID[3];
 void simple_server_start(void)
@@ -359,6 +361,7 @@ void simple_server_start(void)
 				}
 				else if (iap_state == 0x10)
 				{
+					uint32_t RamSource;
 					make_udp_reply_with_data(buf, payloadlen, 65518);
 					if (memcmp(buf+UDP_DATA_P, "iap_data:", 9) == 0)
 					{
@@ -366,10 +369,25 @@ void simple_server_start(void)
 						//write flash ok;
 						iap_state = 0x13;
 						RamSource = (uint32_t)(buf + UDP_DATA_P + 13);
-
+						
+						if ((last_1k_cache_size == 0) && 
+							(FlashDestination-ApplicationAddress+package_size.data_32<flash_length)/*不是最后一包*/)
 						{
+							memcpy(last_1k_cache, (char*)RamSource, package_size.data_32);
+							last_1k_cache_size = 1024;
+						}
+						else
+						{
+							memcpy(last_1k_cache+1024, (char*)RamSource, package_size.data_32);
+							last_1k_cache_size = 1024+package_size.data_32;
+							// 增加擦除的流程
+							FLASH_Unlock();
+							FLASH_ErasePage(FlashDestination);
+							
+							RamSource = (uint32_t)(&last_1k_cache[0]);
+
 							for (EraseCounter = 0; 
-								EraseCounter < package_size.data_32 && FlashDestination <  ApplicationAddress + flash_length;
+								EraseCounter < last_1k_cache_size && FlashDestination <  ApplicationAddress + flash_length;
 								EraseCounter+=4)
 							{
 								// xor处理
@@ -388,6 +406,7 @@ void simple_server_start(void)
 								FlashDestination += 4;
 								RamSource += 4;
 							}
+							last_1k_cache_size = 0;
 						}
 					}
 					else if (memcmp(buf+UDP_DATA_P, "iap_end", 7) == 0)

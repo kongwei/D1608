@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 
-const char start_key[30] __at (0x8002800) = "59723DDB977765F9717341F16421"; 
+const char start_key[30] __at (0x8002800) = "B438AB2DF5CB3C22F3A9E32A395C"; 
 
 // 重要：app的校验码位置
 const int app_key_address = 0x8012300;
@@ -57,7 +57,7 @@ Flash_Data myip;
 void GPIO_Configuration(void);
 GPIO_InitTypeDef GPIO_InitStructure;
 
-unsigned char mymac[6] = {0x00, 0x04, 0xa3, 0x11, 0x01, 0x51};
+unsigned char mymac[8] = {0x00, 0x04, 0xa3, 0x11, 0x01, 0x51, 0xFF, 0xFF};
 
 u32 CpuID[3];
 
@@ -109,10 +109,16 @@ int main(void)
 	SPI1_Init();
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE); 
 
+	//获取CPU唯一ID
+	CpuID[0]=*(vu32*)(0x1ffff7e8);
+	CpuID[1]=*(vu32*)(0x1ffff7ec);
+	CpuID[2]=*(vu32*)(0x1ffff7f0);
+
 	FLASH_Unlock();
 	if (*(__IO uint32_t*)iap_ip_address == 0x55aa4774 )
 	{
 		myip.data_32 = *(__IO uint32_t*)(iap_ip_address + 4);
+		memcpy(mymac+3, (char*)iap_ip_address+8+3, 8-3);
 	}
 
 	if (myip.data_32 == 0)
@@ -123,33 +129,25 @@ int main(void)
 		myip.data_8[3] = 125;
 	}
 
+	if (mymac[6]==0xFF && mymac[7]==0xFF)
 	{
 		// 00,04,a3为MICROCHIP注册的MAC地址：
 		// http://www.microchip.com/forums/m147413-print.aspx
+		uint8_t * p_id = (uint8_t*)(0x1ffff7e8);
+		mymac[3] = p_id[0]+p_id[3]+p_id[6]+p_id[9];
+		mymac[4] = p_id[1]+p_id[4]+p_id[7]+p_id[10];
+		mymac[5] = p_id[2]+p_id[5]+p_id[8]+p_id[11];
+	}
 
-		//获取CPU唯一ID
-		CpuID[0]=*(vu32*)(0x1ffff7e8);
-		CpuID[1]=*(vu32*)(0x1ffff7ec);
-		CpuID[2]=*(vu32*)(0x1ffff7f0);
-		
-		mymac[3] = CpuID[0]&0xFF;
-		mymac[4] = CpuID[1]&0xFF;
-		mymac[5] = CpuID[2]&0xFF;
+	/*初始化ENC28J60*/
+	enc28j60Init(mymac);
 
-// 		mymac[3] = myip.data_8[0] ^ myip.data_8[1] ^ 0x55;
-// 		mymac[4] = myip.data_8[2] ^ myip.data_8[3] ^ 0x47;
-// 		mymac[5] = myip.data_8[2] ^ 0x74 + myip.data_8[3] ^ 0x3c;
+	init_ip_arp_udp_tcp(mymac, myip.data_8, 0);
 
-		/*初始化ENC28J60*/
-		enc28j60Init(mymac);
-
-		init_ip_arp_udp_tcp(mymac, myip.data_8, 0);
-
-		/*ENC28J60初始化以及Server程序*/
-		while(1)
-		{	 
-			simple_server_start();
-		}
+	/*ENC28J60初始化以及Server程序*/
+	while(1)
+	{	 
+		simple_server_start();
 	}
 }
 
