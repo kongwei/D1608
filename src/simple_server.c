@@ -378,8 +378,16 @@ void simple_server_start(void)
 						}
 						else
 						{
-							memcpy(last_1k_cache+1024, (char*)RamSource, package_size.data_32);
-							last_1k_cache_size = 1024+package_size.data_32;
+							if (package_size.data_32 != 1024)
+							{
+								memcpy(last_1k_cache, (char*)RamSource, package_size.data_32);
+								last_1k_cache_size = package_size.data_32;
+							}
+							else
+							{
+								memcpy(last_1k_cache+1024, (char*)RamSource, package_size.data_32);
+								last_1k_cache_size = 1024+package_size.data_32;
+							}
 							// 增加擦除的流程
 							FLASH_Unlock();
 							FLASH_ErasePage(FlashDestination);
