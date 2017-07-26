@@ -5,6 +5,7 @@
 #include "net.h"
 #include "simple_server.h"
 #include "stm32f10x_flash.h"
+#include <absacc.h>
 
 #define BUFFER_SIZE 1500
 
@@ -12,6 +13,12 @@ extern unsigned long int iap_ip_address;
 extern Flash_Data myip;
 const unsigned char equip_id[10] = "SMCXXXX";
 const unsigned char xor_key[17] = "江苏南京联盛科技";
+
+#ifndef DEBUG_VERSION
+const char MyText[] __at (0x08001F00) = __DATE__" "__TIME__;
+#else
+const char MyText[] __at (0x08001F00) = "                  ";
+#endif
 
 uint32_t FlashDestination, flash_length; 
 
@@ -51,6 +58,11 @@ extern unsigned char mymac[6];
 static char last_1k_cache[2048]; // 前1024缓存，后1024拼接数据
 static int last_1k_cache_size = 0;
 
+static int GetCurrentPoint()
+{
+	return FlashDestination + last_1k_cache_size - ApplicationAddress;
+}
+	
 extern u32 CpuID[3];
 void simple_server_start(void)
 {
@@ -122,7 +134,7 @@ void simple_server_start(void)
 			memcpy(p_reply->ip, myip.data_8, 4);
 			snprintf(p_reply->name, 25, "%s", equip_id);
 			snprintf(p_reply->id, 10, "%02X%02X%02X", mymac[3], mymac[4], mymac[5]);
-			snprintf(p_reply->ver, 35, "%s %s", __DATE__, __TIME__);
+			snprintf(p_reply->ver, 35, "%s", MyText);
 
 			//memcpy(p_reply->mac, mymac, 6);
 			memcpy(&p_reply->sn_info, (char*)SN_START_PAGE + active_code_length, sizeof(p_reply->sn_info));
@@ -252,15 +264,17 @@ void simple_server_start(void)
 			}
 			else if (iap_state == IAP_STATE_WRITE_OK)
 			{
+				int next_point = GetCurrentPoint();
 				memcpy(buf+UDP_DATA_P, "Flash write ok", 14);
-
-				make_udp_reply_with_data(buf, 14, 65518);
+				memcpy(buf+UDP_DATA_P+14, &next_point, 4);
+				make_udp_reply_with_data(buf, 18, 65518);
 			}
 			else if (iap_state == IAP_STATE_WRITE_ERR)
 			{
+				int next_point = GetCurrentPoint();
 				memcpy(buf+UDP_DATA_P, "Flash writeerr", 14);
-
-				make_udp_reply_with_data(buf, 14, 65518);
+				memcpy(buf+UDP_DATA_P+14, &next_point, 4);
+				make_udp_reply_with_data(buf, 18, 65518);
 			}
 			else if (iap_state == IAP_STATE_END)
 			{
@@ -269,16 +283,15 @@ void simple_server_start(void)
 				if (FLASHStatus == FLASH_COMPLETE)
 				{
 					memcpy(buf+UDP_DATA_P, "I will jump ok", 14);
-
 					make_udp_reply_with_data(buf, 14, 65518);
-					
 					NVIC_SystemReset();
 				}
 				else
 				{
+					int next_point = GetCurrentPoint();
 					memcpy(buf+UDP_DATA_P, "Flash writeerr", 14);
-
-					make_udp_reply_with_data(buf, 14, 65518);
+					memcpy(buf+UDP_DATA_P+14, &next_point, 4);
+					make_udp_reply_with_data(buf, 18, 65518);
 				}
 			}
 		}
@@ -372,25 +385,14 @@ void simple_server_start(void)
 						memcpy(package_size.data_8, buf+UDP_DATA_P+9, 4);
 						iap_state = IAP_STATE_WRITE_OK;
 						RamSource = (uint32_t)(buf + UDP_DATA_P + 13);
-						
-						if ((last_1k_cache_size == 0) && 
-							(FlashDestination-ApplicationAddress+package_size.data_32<flash_length)/*不是最后一包*/)
+
+						memcpy(last_1k_cache+last_1k_cache_size, (char*)RamSource, package_size.data_32);
+						last_1k_cache_size += package_size.data_32;
+
+						if ((last_1k_cache_size == 2048) || 
+							(FlashDestination+last_1k_cache_size) >= (ApplicationAddress + flash_length))
 						{
-							memcpy(last_1k_cache, (char*)RamSource, package_size.data_32);
-							last_1k_cache_size = 1024;
-						}
-						else
-						{
-							if (package_size.data_32 != 1024)
-							{
-								memcpy(last_1k_cache, (char*)RamSource, package_size.data_32);
-								last_1k_cache_size = package_size.data_32;
-							}
-							else
-							{
-								memcpy(last_1k_cache+1024, (char*)RamSource, package_size.data_32);
-								last_1k_cache_size = 1024+package_size.data_32;
-							}
+							int last_FlashDestination = FlashDestination;
 							// 增加擦除的流程
 							FLASH_Unlock();
 							FLASH_ErasePage(FlashDestination);
@@ -413,11 +415,21 @@ void simple_server_start(void)
 								{
 									//write flash err;
 									iap_state = IAP_STATE_WRITE_ERR;
+									FlashDestination = last_FlashDestination;
+									break;
 								}
 								FlashDestination += 4;
 								RamSource += 4;
 							}
 							last_1k_cache_size = 0;
+						}
+						else if (last_1k_cache_size == 1024)
+						{
+						}
+						else
+						{
+							// 
+							last_1k_cache_size += 1;
 						}
 					}
 					else if (memcmp(buf+UDP_DATA_P, "iap_end", 7) == 0)

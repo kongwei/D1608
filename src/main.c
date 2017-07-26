@@ -10,12 +10,10 @@
 #include <string.h>
 #include <stdio.h>
 
-const char start_key[30] __at (0x8002800) = "B438AB2DF5CB3C22F3A9E32A395C"; 
+const char start_key[30] __at (0x8002800) = "539938FED300337E026A38364625"; 
 
 // 重要：app的校验码位置
 const int app_key_address = 0x8012300;
-
-extern char MyText[]; 
 
 void CheckStart()
 {
@@ -67,7 +65,9 @@ int main(void)
 	uint32_t JumpAddress;
 	uint32_t tmpreg;
 
+#ifndef DEBUG_VERSION
 	CheckStart();
+#endif
 
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0000);
 	SystemInit();
@@ -87,7 +87,9 @@ int main(void)
 	if ((*(__IO uint32_t*)iap_ip_address != 0x55aa4774)
 		&& ((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
 	{
+#ifndef DEBUG_VERSION
 		if (CheckApp())
+#endif
 		{
 			//跳转至work代码
 			JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);

@@ -3,12 +3,9 @@
 #include "net.h"
 #include "enc28j60.h"
 #include <stdio.h>
-#include <absacc.h>
 
 static unsigned char macaddr[6];
 static unsigned char ipaddr[4];
-const char MyText[] __at (0x08001F00) = __DATE__" "__TIME__; 
-
 // The Ip checksum is calculated over the ip header only starting
 // with the header length field and a total length of 20 bytes
 // unitl ip.dst
