@@ -219,48 +219,52 @@ void simple_server_start(void)
 			make_udp_reply_with_data(buf, 3, 65518);
 			return;
 		}
-		
+
+#define IAP_STATE_INIT 0x00
+#define IAP_STATE_ERR  0x01
+#define IAP_STATE_NODATA    0x05
+#define IAP_STATE_ERASE_OK  0x12
+#define IAP_STATE_WRITE_OK  0x13
+#define IAP_STATE_WRITE_ERR  0x14
+#define IAP_STATE_END  0x26
+
 		if (memcmp(buf+UDP_DATA_P, "opt", 3) == 0)
 		{
-			if (iap_state == 0x01)
+			if (iap_state == IAP_STATE_ERR)
 			{
-				iap_state = 0x00;
+				iap_state = IAP_STATE_INIT;
 				memcpy(buf+UDP_DATA_P, "Too Big!!", 9);
 
 				make_udp_reply_with_data(buf, 9, 65518);
 			}
-			else if (iap_state == 0x05)
+			else if (iap_state == IAP_STATE_NODATA)
 			{
-				iap_state = 0x00;
+				iap_state = IAP_STATE_INIT;
 				memcpy(buf+UDP_DATA_P, "Not Data!", 9);
 
 				make_udp_reply_with_data(buf, 9, 65518);
 			}
-			else if (iap_state == 0x12)
+			else if (iap_state == IAP_STATE_ERASE_OK)
 			{
-				iap_state = 0x10;
 				memcpy(buf+UDP_DATA_P, "Flash_Erase_ok", 14);
 
 				make_udp_reply_with_data(buf, 14, 65518);
 			}
-			else if (iap_state == 0x13)
+			else if (iap_state == IAP_STATE_WRITE_OK)
 			{
-				iap_state = 0x10;
 				memcpy(buf+UDP_DATA_P, "Flash write ok", 14);
 
 				make_udp_reply_with_data(buf, 14, 65518);
 			}
-			else if (iap_state ==0x14)
+			else if (iap_state == IAP_STATE_WRITE_ERR)
 			{
-				iap_state = 0x10;
 				memcpy(buf+UDP_DATA_P, "Flash writeerr", 14);
 
 				make_udp_reply_with_data(buf, 14, 65518);
 			}
-			else if (iap_state == 0x26)
+			else if (iap_state == IAP_STATE_END)
 			{
 				FLASH_Status FLASHStatus;
-				iap_state = 0x20;
 				FLASHStatus = FLASH_ErasePage(iap_ip_address);
 				if (FLASHStatus == FLASH_COMPLETE)
 				{
@@ -280,7 +284,7 @@ void simple_server_start(void)
 		}
 		else if (memcmp(buf+UDP_DATA_P, "err", 3) == 0)
 		{
-			iap_state = 0x00;
+			iap_state = IAP_STATE_INIT;
 		}
 		else
 		{
@@ -294,7 +298,7 @@ void simple_server_start(void)
 			{
 				iap_state &= 0xf0;
 
-				if (iap_state == 0x00)
+				if (iap_state == IAP_STATE_INIT) // IAP_STATE_INIT || IAP_STATE_ERR || IAP_STATE_WRITE_OK
 				{
 					if (memcmp(buf+UDP_DATA_P, "iap_start", 9) == 0)
 					{
@@ -305,7 +309,7 @@ void simple_server_start(void)
 						if (package_size.data_32 > 128*1024)//51200
 						{
 							//too big
-							iap_state = 0x01;
+							iap_state = IAP_STATE_ERR;
 						}
 						else
 						{
@@ -328,7 +332,7 @@ void simple_server_start(void)
 							}
 
 							//flash erase ok
-							iap_state = 0x12;
+							iap_state = IAP_STATE_ERASE_OK;
 						}
 					}
 					else if (memcmp(buf+UDP_DATA_P, "iap", 3) != 0)
@@ -359,15 +363,14 @@ void simple_server_start(void)
 						}
 					}
 				}
-				else if (iap_state == 0x10)
+				else if (iap_state == 0x10) // IAP_STATE_ERASE_OK || IAP_STATE_WRITE_OK || IAP_STATE_WRITE_ERR
 				{
 					uint32_t RamSource;
 					make_udp_reply_with_data(buf, payloadlen, 65518);
 					if (memcmp(buf+UDP_DATA_P, "iap_data:", 9) == 0)
 					{
 						memcpy(package_size.data_8, buf+UDP_DATA_P+9, 4);
-						//write flash ok;
-						iap_state = 0x13;
+						iap_state = IAP_STATE_WRITE_OK;
 						RamSource = (uint32_t)(buf + UDP_DATA_P + 13);
 						
 						if ((last_1k_cache_size == 0) && 
@@ -409,7 +412,7 @@ void simple_server_start(void)
 								if (*(uint32_t*)FlashDestination != write_data)
 								{
 									//write flash err;
-									iap_state = 0x14;
+									iap_state = IAP_STATE_WRITE_ERR;
 								}
 								FlashDestination += 4;
 								RamSource += 4;
@@ -419,18 +422,18 @@ void simple_server_start(void)
 					}
 					else if (memcmp(buf+UDP_DATA_P, "iap_end", 7) == 0)
 					{
-						iap_state = 0x26;
+						iap_state = IAP_STATE_END;
 					}
 					else
 					{
 						//write flash ok;
-						iap_state = 0x05;
+						iap_state = IAP_STATE_NODATA;
 					}
 				}
 				else
 				{
 					make_udp_reply_with_data(buf, payloadlen, 65518);
-					iap_state = 0x00;
+					iap_state = IAP_STATE_INIT;
 				}
 			}
 		}
