@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 
-const char start_key[30] __at (0x8002800) = "539938FED300337E026A38364625"; 
+const char start_key[30] __at (0x8002800) = "7FF952858D04E6A10C18A2AEE984"; 
 
 // 重要：app的校验码位置
 const int app_key_address = 0x8012300;
@@ -120,7 +120,7 @@ int main(void)
 	if (*(__IO uint32_t*)iap_ip_address == 0x55aa4774 )
 	{
 		myip.data_32 = *(__IO uint32_t*)(iap_ip_address + 4);
-		memcpy(mymac+3, (char*)iap_ip_address+8+3, 8-3);
+		memcpy(mymac, (char*)iap_ip_address+8, 6);
 	}
 
 	if (myip.data_32 == 0)
@@ -131,7 +131,7 @@ int main(void)
 		myip.data_8[3] = 125;
 	}
 
-	if (mymac[6]==0xFF && mymac[7]==0xFF)
+	if (mymac[0]==0xFF && mymac[1]==0xFF)
 	{
 		// 00,04,a3为MICROCHIP注册的MAC地址：
 		// http://www.microchip.com/forums/m147413-print.aspx

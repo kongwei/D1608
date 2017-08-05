@@ -1,7 +1,7 @@
 #ifndef _TCPIP_H
 #define _TCPIP_H
 
-#define DEBUG_VERSION
+//#define DEBUG_VERSION
 
 /* ¿‡–Õ…˘√˜ -----------------------------------------------------------------*/
 typedef void (*pFunction)(void);
