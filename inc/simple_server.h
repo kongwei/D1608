@@ -7,7 +7,7 @@
 typedef void (*pFunction)(void);
 typedef union
 {
-	unsigned long int data_32;
+	unsigned int data_32;
 	unsigned char data_8[4];
 } Flash_Data;
 

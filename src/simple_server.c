@@ -44,7 +44,7 @@ extern unsigned char mymac[6];
 		char ser[16];
 		char ver[36];
 		char mac[6];
-		char mask[4];
+		unsigned int mask;
 		char gateway[4];
 		short port;
 		unsigned int cpu_id[3];		//
@@ -112,10 +112,16 @@ void simple_server_start(void)
 		if (memcmp(buf+UDP_DATA_P, "ver", 3) == 0)
 		{
 			T_slp_pack * p_reply = (T_slp_pack*)(buf+UDP_DATA_P);
-			memset(p_reply, 0, sizeof(T_slp_pack));
+			unsigned int sr_ip = (*(int*)(buf+IP_SRC_P));
 
+			if (p_reply->mask == 0)
+				p_reply->mask = 0x00FFFFFF;
+			// 兼容早起版本
+			if ( *(buf+UDP_LEN_H_P) == 0 && *(buf+UDP_LEN_H_P)<10 )
+				p_reply->mask = 0x00FFFFFF;
+			
 			// 如果收到报文的ip地址的前3字节不同，那么进入跟随ip地址模式
-			if (memcmp(myip.data_8, buf+IP_SRC_P, 3) != 0)
+			if ( (myip.data_32 & p_reply->mask) != (sr_ip & p_reply->mask) )
 			{
 				memcpy(myip.data_8, buf+IP_SRC_P, 4);
 				// IP结尾为10或者18
@@ -127,6 +133,7 @@ void simple_server_start(void)
 				init_ip_arp_udp_tcp(mymac, myip.data_8, 0);
 			}
 
+			memset(p_reply, 0, sizeof(T_slp_pack));
 			p_reply->cpu_id[0] = *(vu32*)(0x1ffff7e8);
 			p_reply->cpu_id[1] = *(vu32*)(0x1ffff7ec);
 			p_reply->cpu_id[2] = *(vu32*)(0x1ffff7f0);
@@ -170,7 +177,7 @@ void simple_server_start(void)
 			}
 			if (i == 256)
 			{
-				// 返回校验码
+				// 返回CpuId和校验码
 				memcpy(buf+UDP_DATA_P, (char*)SN_START_PAGE+1024, 256);
 				memcpy(buf+UDP_DATA_P+256, CpuID, 12);
 				make_udp_reply_with_data(buf, 256+12, 8754);
