@@ -158,8 +158,8 @@ void simple_server_start(void)
 	// 8754
 	else if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0x22) && (buf[UDP_DST_PORT_L_P] == 0x32))
 	{
-		int length = buf[UDP_LEN_H_P] << 8 | buf[UDP_LEN_L_P];
-		if (length < 256+12)
+		int udp_len = buf[UDP_LEN_H_P] << 8 | buf[UDP_LEN_L_P];
+		if (udp_len < 256+12)
 		{
 			return;
 		}
@@ -188,7 +188,7 @@ void simple_server_start(void)
 			// 写rsa加密后的校验码
 			int i;
 			
-			char sn_pack_buf[sizeof(T_sn_pack)];
+			char sn_pack_buf[1024-active_code_length];
 			memcpy(sn_pack_buf, (char*)SN_START_PAGE + active_code_length, sizeof(sn_pack_buf));
 			
 			FLASH_Unlock();
@@ -200,7 +200,7 @@ void simple_server_start(void)
 				FLASH_ProgramWord(SN_START_PAGE+1024+i, write_data);
 			}
 
-			for (i = 0; i<sizeof(T_sn_pack); i+=4)
+			for (i = 0; i<sizeof(sn_pack_buf); i+=4)
 			{
 				uint32_t data = *(uint32_t*)(sn_pack_buf+i);
 				FLASH_ProgramWord(SN_START_PAGE + i + active_code_length, data);
@@ -210,19 +210,20 @@ void simple_server_start(void)
 	else if ((buf[IP_PROTO_P] == IP_PROTO_UDP_V) && (buf[UDP_DST_PORT_H_P] == 0x03) && (buf[UDP_DST_PORT_L_P] == 0x79))
 	{
 		int i;
+		int udp_len = buf[UDP_LEN_H_P]<<8|buf[UDP_LEN_L_P];
 		//T_sn_pack * p_sn = (T_sn_pack*)(buf+UDP_DATA_P);
-		char rsa_buf[256];
+		char rsa_buf[1024];
 		memcpy(rsa_buf, (char*)SN_START_PAGE + 1024, sizeof(rsa_buf));
 		
 		FLASH_Unlock();
 		FLASH_ErasePage(SN_START_PAGE);
 
-		for (i = 0; i<sizeof(T_sn_pack); i+=4)
+		for (i = 0; i<udp_len; i+=4)
 		{
 			uint32_t data = *(uint32_t*)(buf+UDP_DATA_P+i);
 			FLASH_ProgramWord(SN_START_PAGE + i + active_code_length, data);
 		}
-		for (i = 0; i < 256; i += 4)
+		for (i = 0; i < sizeof(rsa_buf); i += 4)
 		{
 			uint32_t write_data = *(uint32_t*)(rsa_buf+i);
 			FLASH_ProgramWord(SN_START_PAGE+1024+i, write_data);
