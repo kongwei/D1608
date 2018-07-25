@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 
-const char start_key[30] __at (0x8002800) = "10AB5AFBC36EF8449D3FC6B517C1"; 
+const char start_key[30] __at (0x8002800) = "2D73BC5C2B7E633962D335D3E779"; 
 
 // 重要：app的校验码位置
 const int app_key_address = 0x8012300;

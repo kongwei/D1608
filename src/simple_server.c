@@ -327,7 +327,7 @@ void simple_server_start(void)
 						
 						memcpy(package_size.data_8, buf+UDP_DATA_P+9, 4);
 						flash_length = package_size.data_32;
-						if (package_size.data_32 > 128*1024)//51200
+						if (package_size.data_32 > 228*1024)//51200
 						{
 							//too big
 							iap_state = IAP_STATE_ERR;
